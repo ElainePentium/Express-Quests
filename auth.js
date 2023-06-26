@@ -11,7 +11,7 @@ const hashingOptions = {
     argon2
       .hash(req.body.password, hashingOptions)
       .then((hashedPassword) => {
-        console.log(hashedPassword);
+        // console.log("hashedPWD:", hashedPassword);
   
         req.body.hashedPassword = hashedPassword;
         delete req.body.password;
@@ -24,7 +24,6 @@ const hashingOptions = {
       });
   };
 
-  
 //const hashedPassword = await argon2.hash(password, hashingOptions);
 
 module.exports = {
