@@ -1,8 +1,10 @@
 const database = require("./database");
+const argon2 = require("argon2");
+
 
 const getUsers = (req, res) => {
   database
-    .query("select * from users")
+    .query("select id, firstname, lastname, email, city, language from users")
     // DESTRUCUTRATION
     .then(([users]) => {
       res.json(users);
@@ -17,7 +19,9 @@ const getUserById = (req, res) => {
   const id = parseInt(req.params.id);
 
   database
-    .query("select * from users where id = ?", [id])
+    .query(`
+      SELECT firstname, lastname, email, city, language FROM users 
+      WHERE id = ?`, [id])
     .then(([users]) => {
       if (users[0] != null) {
         res.json(users[0]);
@@ -31,20 +35,66 @@ const getUserById = (req, res) => {
     });
 };
 
-module.exports = {
-  getUsers,
-  getUserById,
+const postUser = (req, res) => {
+  const { firstname, lastname, email, city, language, hashedPassword } = req.body;
+
+  database
+    .query(`
+    INSERT INTO
+      users (firstname, lastname, email, city, language, hashedPassword)
+      VALUES
+      (?, ?, ?, ?, ?, ?)
+      `, [firstname, lastname, email, city, language, hashedPassword])
+    .then( res.send("User created"))
+    .catch((err) => {
+      console.error(err);
+      res.status(500).send("Error creating data from database");
+    });
+
+};
+
+const updateUser = (req, res) => {
+  const { hashedPassword } = req.body;
+  const id = parseInt(req.params.id); 
+
+  database
+    .query(`
+      UPDATE users
+      SET hashedPassword = ?
+      WHERE id = ?
+      `, [hashedPassword, id])
+    .catch((err) => {
+      console.error(err);
+      res.status(500).send("Error creating data from database");
+    });
+};
+
+const getUserByEmailWithPasswordAndPassToNext = (req, res, next) => {
+  const { email } = req.body;
+
+  database
+    .query(`
+      SELECT * FROM users WHERE email = ?`, [email])
+    .then(([users]) => {
+      if (users[0] != null) {
+        // res.json(users[0]).send("Found email");
+        req.user = users[0]
+        next();
+      } else {
+        res.status(401).send("Not Found");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).send("Error retrieving data from database");
+    });
 };
 
 
-// Créer une route GET /api/users, cette route doit renvoyer un statut 200 et une liste d'utilisateurs de la base de données au format json
-// Créez une route GET /api/users/:id qui renverra uniquement l'utilisateur de la base de données correspondant à l'identifiant défini dans l'url
-// S'il y a un utilisateur qui correspond aux paramètres, renvoie une réponse avec un statut 200 et l'utilisateur correspondant en tant qu'objet json
-// Sinon, retourne un statut 404 avec un message "Not Found"
-// Publie une URL d'un dépôt GitHub avec ton application complète comme solution.
-
-// 🧐 Critères de validation
-//  Le serveur fonctionne
-//  L'url /api/users affiche la liste des utilisateurs au format json
-//  L'url /api/users/2 affiche un utilisateur au format json
-//  L'url /api/users/0 affiche "Not found"
+module.exports = {
+  getUsers,
+  getUserById,
+  postUser,
+  updateUser,
+  getUserByEmailWithPasswordAndPassToNext
+};
